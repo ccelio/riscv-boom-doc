@@ -29,6 +29,34 @@
 
 \let\tt\texttt
 
+\lstset{ %
+language=C++,                % choose the language of the code
+%basicstyle=\small\ttfamily,      % the size of the fonts that are used for the code
+basicstyle=\scriptsize\ttfamily,basewidth=0.50em,      % the size of the fonts that are used for the code
+numbers=left,                   % where to put the line-numbers
+numberstyle=\scriptsize,      % the size of the fonts that are used for the line-numbers
+stepnumber=1,                   % the step between two line-numbers. If it is 1 each line will be numbered
+numbersep=5pt,                  % how far the line-numbers are from the code
+backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+showspaces=false,               % show spaces adding particular underscores
+showstringspaces=false,         % underline spaces within strings
+showtabs=false,                 % show tabs within strings adding particular underscores
+frame=single,                   % adds a frame around the code
+tabsize=3,              % sets default tabsize to 3 spaces
+captionpos=b,                   % sets the caption-position to bottom
+breaklines=true,        % sets automatic line breaking
+breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+linewidth=1.0\textwidth,
+boxpos=b,
+%escapeinside={\%
+%}
+%{
+%)}          % if you want to add a comment within your code
+}
+\renewcommand{\lstlistingname}{Code} % change caption title from 'listings' to what I want
+
+
+
 \newcommand{\smalltodo}[1]{\marginpar{\footnotesize #1}}
 
 \newcommand{\TODO}[1]{{\color{red} {\textbf [ TODO: #1 ]}}}

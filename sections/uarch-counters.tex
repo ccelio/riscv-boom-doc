@@ -19,9 +19,30 @@ Number & Event \\
 \label{table:uarchcounters}
 \end{table}%
 
-The counters can be modified in {\tt dpath.scala}. 
+The counters can be modified in {\tt dpath.scala} to track events of interest.
 
 Note: the counters can be quite large (64-bits each), and it is recommended that alternative methods be used if a silicon BOOM is the end-product. A design that can multiplex counters is recommended. 
 
+\section{Reading UArch Counters in Software}
 
-\TODO{describe how to access them via software}
+The Code Example \ref{ref:code_uarch} demonstrates how to read the value of any CSR register from software.
+  
+  
+\begin{center}
+\begin{minipage}{0.66\textwidth}
+\begin{lstlisting}[caption=Reading a CSR register]
+#define read_csr_safe(reg) ({ register long __tmp asm("a0"); \   
+  asm volatile ("csrr %0, " #reg : "=r"(__tmp)); \               
+  __tmp; })             
+  
+  long csr_cycle   = read_csr_safe(cycle);
+  long csr_instr   = read_csr_safe(instret);
+  long csr_uarch0  = read_csr_safe(uarch0);
+  ...
+  long csr_uarch15 = read_csr_safe(uarch15);
+  
+\end{lstlisting}\label{ref:code_uarch}
+\end{minipage}
+\end{center}
+
+
