@@ -2,8 +2,8 @@ The BOOM processor can be found at (https://github.com/ucb-bar/riscv-boom).
 
 To build (and then read) this document using Latex:
 
-   $ make
-   $ open main.pdf
+    $ make
+    $ open main.pdf
 
 
 The information in this publication is subject to change without notice. 
