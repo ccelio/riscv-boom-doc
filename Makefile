@@ -14,7 +14,7 @@ $(PAPER).pdf: $(TEX) $(BIB) $(FIGS)
 	pdflatex $(PAPER)
 
 clean:
-	rm -f *.gz *.aux *.bbl *.blg *.log *.out sections/*.aux $(PAPER).pdf
+	rm -f *.toc *.gz *.aux *.bbl *.blg *.log *.out sections/*.aux $(PAPER).pdf
 
 # only works on OSX
 open: $(PAPER).pdf

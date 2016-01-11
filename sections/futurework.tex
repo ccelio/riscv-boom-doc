@@ -40,11 +40,56 @@ BOOM's ROB can be augmented to track {\em commit} and {\em non-speculative} poin
 This augmentation will allow ROCC instructions to be sent to the ROCC command queue once they are deemed ``non-speculative", but the resources they allocate will not be freed until the ROCC instruction returns an acknowledgement.  This prevents a ROCC instruction that writes a scalar register in BOOM's register file from overwriting a newer instruction's writeback value, a scenario that can occur if the ROCC instruction commits too early, followed by another instruction committing that uses the same ISA register as its writeback destination. 
 
 
+\subsection{The BOOM Custom Co-processor Interface (BOCC)}
 
-\section{The Vector (``V") Extension}
+Some accelerators may wish to take advantage of speculative instructions (or even out-of-order issue) to begin executing instructions earlier to maximize de-coupling.  Speculation can be handled by either by epoch tags (if in-order issue is maintained to the co-processor) or by allocating mask bits (to allow for fine-grain killing of instructions). 
+
+\section{The Vector (``V") ISA Extension}
 
 Implementing the Vector Extension in BOOM would open up the ability to leverage performance (or energy-efficiency) improvements in running data-level parallel codes (DLP). 
 
 While it would be relatively easy to add vector arithmetic operations to BOOM, the significant challenges lay in the vector load/store unit. 
 
 \TODO{...}
+
+
+\section{The Compressed (``C") ISA Extension}
+
+This section describes how to approach adding the Compressed ISA Extension to BOOM.  The Compressed ISA Extension, or RVC  (\url{http://riscv.org/download.html#spec_compressed_isa}) enables smaller, 16 bit encodings of common instructions to decrease the static and dynamic code size.  ``RVC" comes with a number of features that are of particular interest to micro-architects:
+
+\begin{itemize}
+\item All 16b instructions map directly into a longer 32b instruction. 
+\item 32b instructions have no alignment requirement, and may start on a half-word boundary.
+\end{itemize}
+
+\begin{figure}[ht]
+	\centering
+	\centerline{\includegraphics[scale =1] {figures/frontend}}
+	\caption{ \small The Fetch Unit. The grey box encompasses the Rocket front-end, which is re-used by BOOM.}
+	\label{fig:lsu}
+\end{figure}
+
+BOOM re-uses the front-end design from Rocket, a 5-stage in-order core.  BOOM then takes instructions returning (the {\em fetch packet}) from the Rocket front-end, quickly decodes the instructions for branch prediction, and pushes the {\em fetch packet} into the {\em Fetch Buffer}. 
+
+
+The C Extension provides the following challenges to micro-architects:
+
+\begin{itemize}
+\item Increased decoding complexity (e.g., operands can now move around). 
+\item Finding {\em where} the instruction begins. 
+\item Tracking down $+4$ assumptions throughout the code base, particularly with branch handling.
+\item Unaligned instructions, in particular, running off cache lines and virtual pages. 
+\end{itemize}
+
+The last point requires some additional ``statefulness" in the Fetch Unit, as fetching all of the pieces of an instruction may take multiple cycles. 
+
+The following describes the proposed implementation of RVC for BOOM:
+
+\begin{itemize}
+\item Implement RVC in the Rocket in-order core.  Done properly, BOOM will then gain RVC support almost entirely for free (modulo any $+4$ assumptions in the code base).
+\item Move BOOM's {\em Fetch Buffer} into Rocket's front-end. Rocket will need the statefulness to handle wrap-around issues with fetching unaligned 32 bit instructions.  A non-RVC Rocket core can optionally remove this buffer. 
+\item Expand 16-bit instructions as they enter (or possibly exit) the {\em Fetch Buffer}. 
+\item Minimize latency by placing 16b$\rightarrow$32b expanders at every half-word start. 
+\end{itemize}
+
+
