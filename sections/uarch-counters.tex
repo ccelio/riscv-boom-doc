@@ -1,0 +1,27 @@
+\chapter{Micro-architectural Counters}
+
+The current RISC-V gcc toolchain provides access to 16 named ``uarch" counters.\footnote{The future plan of record is to move these counters into the memory-mapped access region. This will open up the ability to track a much larger number of counters, as desired.}
+
+\begin{table}[htdp]
+\caption{Uarch Counters}
+\begin{center}
+\begin{tabular}{|c|c|}
+\hline
+Number & Event \\
+\hline
+\hline
+0 & Committed Branch Mispredictions \\
+\hline
+1 & Committed Branches \\
+\hline
+\end{tabular}
+\end{center}
+\label{table:uarchcounters}
+\end{table}%
+
+The counters can be modified in {\tt dpath.scala}. 
+
+Note: the counters can be quite large (64-bits each), and it is recommended that alternative methods be used if a silicon BOOM is the end-product. A design that can multiplex counters is recommended. 
+
+
+\TODO{describe how to access them via software}

@@ -1,0 +1,154 @@
+%%*************************************************************************
+%% The Berkeley Out-of-Order Machine
+%% Christopher Celio
+%% 2015 Dec 17
+%% 
+%% Design document
+%%*************************************************************************
+
+
+\documentclass[11pt, notitlepage]{report}
+
+
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{fullpage}
+\usepackage{listings}
+\usepackage{color}
+\usepackage[multiple]{footmisc}
+
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=red,
+    citecolor=black,
+    filecolor=black,
+    linktoc=all
+}
+
+\let\tt\texttt
+
+\newcommand{\smalltodo}[1]{\marginpar{\footnotesize #1}}
+
+\newcommand{\TODO}[1]{{\color{red} {\textbf [ TODO: #1 ]}}}
+\newcommand{\fixme}[1]{{\color{red} {\textbf [ FIXME: #1 ]}}}
+\newcommand{\ooo}{out-of-order}
+\newcommand{\boom}{{\em BOOM}}
+\newcommand{\BOOM}{{\em BOOM}}
+\newcommand{\Chisel}{{\em Chisel}}
+\newcommand{\Rocket}{{\em Rocket}}
+\newcommand{\rocket}{{\em Rocket}}
+\newcommand{\rocketchip}{{\em Rocket-chip}}
+
+
+\let\oldthebibliography=\thebibliography
+\let\endoldthebibliography=\endthebibliography
+\renewenvironment{thebibliography}[1]{%
+  \begin{oldthebibliography}{#1}%
+    \setlength{\parskip}{0ex}%
+    \setlength{\itemsep}{0ex}%
+  }%
+  {%
+    \end{oldthebibliography}%
+  }
+
+%%*************************************************************************
+\begin{document}
+
+
+\title{The Berkeley Out-of-Order Machine (BOOM) Design Specification}
+\author{Christopher Celio, David Patterson, and Krste Asanovi\'{c}\\
+%School of Electrical and Computer Engineering\\
+University of California, Berkeley, California 94720--1770\\
+{\tt celio@eecs.berkeley.edu}}
+
+\maketitle
+
+%%*************************************************************************
+
+\
+
+\
+
+{\centerline {\color{red}This draft is a work-in-progress.}}
+
+
+\vfill
+
+\hrule
+\
+
+\noindent The information in this publication is subject to change without notice. 
+
+\noindent This document is available at: \url{https://github.com/ccelio/riscv-boom-doc}.
+
+\
+
+\noindent Copyright \copyright\ 2016 Christopher Celio
+
+\
+
+\noindent This work is licensed under the Creative Commons Attribution 4.0 International License (CC BY 4.0). To view a copy of this license, visit \url{http://creativecommons.org/licenses/by/4.0/}.
+
+
+\thispagestyle{empty} % suppress page number 
+
+%%*************************************************************************
+
+\tableofcontents
+
+\include{sections/intro}
+
+\include{sections/fetch}
+\include{sections/bpd}
+\include{sections/decode}
+\include{sections/rename}
+\include{sections/issue}
+\include{sections/lsu}
+\include{sections/memory}
+\include{sections/rob}
+\include{sections/uarch-counters}
+
+
+\include{sections/verification}
+\chapter{Debugging}
+
+
+
+
+
+\appendix
+
+\include{sections/futurework}
+
+\chapter{Frequently Asked Questions}
+
+To be filled in as questions are asked!
+
+
+\chapter{Terminology}
+
+To be filled in as needed.
+
+
+
+\begin{figure}[ht]
+	\centering
+	\centerline{\includegraphics[scale =.9, angle=90] {figures/boom_detailed}}
+	\caption{ \small A more detailed diagram of BOOM, for a single-issue RV32IM design.}
+	\label{fig:boom-detailed}
+\end{figure}
+
+
+
+
+
+
+%\begin{scriptsize}
+\bibliographystyle{abbrv}
+\bibliography{bibliography}
+%\end{scriptsize}
+
+
+\end{document}
