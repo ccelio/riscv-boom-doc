@@ -1,6 +1,6 @@
 PAPER = main
 TEX = $(wildcard *.tex sections/*.tex)
-BIB = references.bib
+BIB = bibliography.bib
 #FIGS = $(wildcard figures/*.pdf figures/*.png graphs/*.pdf graphs/*.png)
 
 .PHONY: all clean
