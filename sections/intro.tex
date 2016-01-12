@@ -16,7 +16,7 @@ The goal of this document is to describe the design and implementation of the Be
 	\centering
 	\centerline{\includegraphics[scale =.9] {figures/boom_stages}}
 	\caption{ \small The Berkeley Out of Order Machine Processor.}
-	\label{fig:rv32_boom}
+	\label{fig:boom_stages}
 \end{figure}
 
 
@@ -25,9 +25,9 @@ Conceptually, BOOM is broken up into 10 stages: {\em Fetch, Decode, Register Ren
 
 \begin{quote}
 \begin{description}
-\item[Fetch]  Instructions are {\em fetched} from the Instruction Memory and placed into a four-entry deep FIFO, known as the {\em fetch buffer}.\footnote{While the fetch buffer is four-entries deep, it can instantly read out the first instruction on the front of the FIFO.  Put another way, instructions don't need to spend four cycles moving their way through the {\em fetch buffer} if there are no instructions in front of them.}
+\item[Fetch]  Instructions are {\em fetched} from the Instruction Memory and placed into a four-entry deep FIFO, known as the {\em fetch buffer}.\footnote{While the fetch buffer is N-entries deep, it can instantly read out the first instruction on the front of the FIFO.  Put another way, instructions don't need to spend four cycles moving their way through the {\em fetch buffer} if there are no instructions in front of them.}
 \item[Decode]
-{\em Decode} pulls instructions out of the {\em fetch buffer} and generates the appropriate ``micro-op" to place into the pipeline.\footnote{Because RISC-V is a RISC ISA, nearly all instructions generate only a single micro-op, with the exception of store instructions, which generate a ``store address generation" micro-op and a ``store data generation" micro-op.} 
+{\em Decode} pulls instructions out of the {\em fetch buffer} and generates the appropriate ``micro-op" to place into the pipeline.\footnote{Because RISC-V is a RISC ISA, currently all instructions generate only a single micro-op.} 
 
 \item[Rename]
  The ISA, or ``logical", register specifiers are then {\em renamed} into ``physical" register specifiers.
@@ -38,9 +38,9 @@ Conceptually, BOOM is broken up into 10 stages: {\em Fetch, Decode, Register Ren
 \item[RF Read]  Issued instructions first {\em read} their operands from the unified physical register file... 
 \item[Execute] and then enter the {\em Execute} stage where the integer ALU resides.  Issued memory operations perform their address calculations in the {\em Execute} stage, and then store the calculated addresses in the Load/Store Unit which resides in the {\em Memory} stage.  
  
-\item[Memory]  The Load/Store Unit consists of three queues: a Load Address Queue (LAQ), a Store Address Queue (SAQ), and a Store Data Queue (SDQ).  Loads are fired to memory when their address is present in the queue and does not conflict with any of the store addresses that the load depends on.\footnote{Technically, the load could bypass the data it needs out of the SDQ if it found a match in the SAQ.  However, BOOM at this time does not support the bypassing of load data out of the SDQ.  Problem \ref{sec:designing1} covers this issue in more detail.} Stores are fired to memory at commit time, when both its address and its data are present.  
+\item[Memory]  The Load/Store Unit consists of three queues: a Load Address Queue (LAQ), a Store Address Queue (SAQ), and a Store Data Queue (SDQ).  Loads are fired to memory when their address is present in the queue and does not conflict with any of the store addresses that the load depends on. Stores are fired to memory at commit time, when both its address and its data are present.  
  
-\item[Writeback]  ALU operations and load operations are {\em written} back to the physical register file.\footnote{While BOOM is a single-issue processor, it does provide ALU operations and memory operations each their own write port, meaning the register file is a two-read, two-write register file (two different destinations can be written simultaneously).}  
+\item[Writeback]  ALU operations and load operations are {\em written} back to the physical register file.
 \item[Commit] The Reorder Buffer, or ROB, tracks the status of each instruction in the pipeline.  When the head of the ROB is not-busy, it {\em commits} the instruction.  For stores, the ROB signals to the store at the head of the Store Queue that it can now write its data to memory.
 \end{description}
 \end{quote}
@@ -49,9 +49,7 @@ Conceptually, BOOM is broken up into 10 stages: {\em Fetch, Decode, Register Ren
   
 BOOM supports full branch speculation and branch prediction.  Each instruction, no matter where it is in the pipeline,  is accompanied by a branch tag that marks which branches the instruction is ``speculated under". A mispredicted branch requires killing all instructions that depended on that branch.  When a branch instructions passes through {\em Rename}, copies of the {\em Register Rename Table} and the {\em Free List} are made.  On a mispredict, the saved processor state is restored.
 
- The {\em Decode} stage contains a Branch History Table, composed of simple {\em n}-bit history counters indexed by PC.  On a predicted branch, the {\em Decode} stage kills the {\em fetch buffer} and redirects the {\em Fetch} stage.  Otherwise, the {\em Fetch} stages fetches along PC+4.\footnote{As of the writing of this handout, BOOM does {\em not} use a Branch Target Buffer, which would allow BOOM to redirect the PC in the {\em Fetch} stage.}  
-
-In this lab, BOOM implements a basic set of instructions from RV32.  BOOM does not support sub-word memory accesses, floating point, or exceptions.  Also, just like the simple pipelines from Lab 1, BOOM is connected to a magic, single-cycle memory (there are no caches or memory hierarchy).  However, bypasses have been removed, meaning that the use-delay on back-to-back instructions is three cycles.  Therefore, out--of--order issue is still an important component to good performance.  
+Although Figure \ref{fig:boom_stages} shows a simplified pipeline, BOOM implements the RV64G and privileged ISAs, which includes single- and double-precision floating point, atomic memory support, and page-based virtual memory. 
 
 
 
@@ -77,7 +75,7 @@ RISC-V provides the following features which make it easy to target with high-pe
 \end{description}
 \end{quote}
 
-BOOM (currently) does not implement the "C" compressed extension nor the "V" vector extension.
+BOOM (currently) does not implement the ``C" compressed extension nor the ``V" vector extension.
 
 \section{The \Chisel\ Hardware Construction Language}
 
