@@ -1,5 +1,7 @@
 .DS_Store
+main.pdf
 *.log
 *.out
 *.aux
+*.gz
 *.toc
