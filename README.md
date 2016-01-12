@@ -1,5 +1,7 @@
 The BOOM processor can be found at (https://github.com/ucb-bar/riscv-boom).
 
+You can download this document from (https://ccelio.github.io/riscv-boom-doc).
+
 To build (and then read) this document using Latex:
 
     $ make
