@@ -4,6 +4,8 @@ You can download this document from (https://ccelio.github.io/riscv-boom-doc).
 
 To build (and then read) this document using Latex:
 
+    $ git clone https://github.com/ccelio/riscv-boom-doc.git
+    $ cd riscv-boom-doc
     $ make
     $ open main.pdf
 
