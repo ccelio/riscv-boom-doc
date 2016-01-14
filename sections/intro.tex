@@ -25,18 +25,18 @@ Conceptually, BOOM is broken up into 10 stages: {\em Fetch, Decode, Register Ren
 
 \begin{quote}
 \begin{description}
-\item[Fetch]  Instructions are {\em fetched} from the Instruction Memory and placed into a four-entry deep FIFO, known as the {\em fetch buffer}.\footnote{While the fetch buffer is N-entries deep, it can instantly read out the first instruction on the front of the FIFO.  Put another way, instructions don't need to spend four cycles moving their way through the {\em fetch buffer} if there are no instructions in front of them.}
+\item[Fetch]  Instructions are {\em fetched} from the Instruction Memory and placed into a FIFO queue, known as the {\em fetch buffer}.\footnote{While the fetch buffer is N-entries deep, it can instantly read out the first instruction on the front of the FIFO.  Put another way, instructions don't need to spend N cycles moving their way through the {\em fetch buffer} if there are no instructions in front of them.}
 \item[Decode]
-{\em Decode} pulls instructions out of the {\em fetch buffer} and generates the appropriate ``micro-op" to place into the pipeline.\footnote{Because RISC-V is a RISC ISA, currently all instructions generate only a single micro-op.} 
+{\em Decode} pulls instructions out of the {\em fetch buffer} and generates the appropriate ``micro-op" to place into the pipeline.\footnote{Because RISC-V is a RISC ISA, currently all instructions generate only a single micro-op. More details on how store micro-ops are handled can be found in Chapter \ref{chapter:memory}.} 
 
 \item[Rename]
  The ISA, or ``logical", register specifiers are then {\em renamed} into ``physical" register specifiers.
   
 \item[Dispatch] The instruction is then {\em dispatched}, or written, into the {\em Issue Window}.  
  
-\item[Issue]   Instructions sitting in the {\em Issue Window} wait until all of their operands are ready, and are then {\em issued}.  This is the beginning of the out--of--order piece of the pipeline.
-\item[RF Read]  Issued instructions first {\em read} their operands from the unified physical register file... 
-\item[Execute] and then enter the {\em Execute} stage where the integer ALU resides.  Issued memory operations perform their address calculations in the {\em Execute} stage, and then store the calculated addresses in the Load/Store Unit which resides in the {\em Memory} stage.  
+\item[Issue]   Instructions sitting in the {\em Issue Window} wait until all of their operands are ready, and are then {\em issued}.\footnote{More precisely, uops that are ready assert their request, and the issue scheduler chooses which uops to issue that cycle.}  This is the beginning of the out--of--order piece of the pipeline.
+\item[RF Read]  Issued instructions first {\em read} their operands from the unified physical register file (or from the bypass network)... 
+\item[Execute] and then enter the {\em Execute} stage where the functional units reside.  Issued memory operations perform their address calculations in the {\em Execute} stage, and then store the calculated addresses in the Load/Store Unit which resides in the {\em Memory} stage.  
  
 \item[Memory]  The Load/Store Unit consists of three queues: a Load Address Queue (LAQ), a Store Address Queue (SAQ), and a Store Data Queue (SDQ).  Loads are fired to memory when their address is present in the queue and does not conflict with any of the store addresses that the load depends on. Stores are fired to memory at commit time, when both its address and its data are present.  
  
@@ -67,7 +67,7 @@ RISC-V provides the following features which make it easy to target with high-pe
 \begin{description}
 \item [Relaxed memory model] This greatly simplifies the Load/Store Unit, which does not need to have loads snoop other loads nor does coherence traffic need to snoop the LSU, as required by sequential consistency.
 \item [accrued floating point exception flags] The fp status register does not need to be renamed, nor can FP instructions throw exceptions themselves. 
-\item [no integer side-effects] All integer ALU operations exhibit no side-effects, save the writing the destination register. This prevents the need to rename additional condition state.
+\item [no integer side-effects] All integer ALU operations exhibit no side-effects, save the writing of the destination register. This prevents the need to rename additional condition state.
 \item [no \bf{cmov} or predication] Although predication can lower the branch predictor complexity of small designs, it greatly complicates OoO pipelines, including the addition of a third read port for integer operations.
 \item [no implicit register specifiers] Even JAL requires specifying an explicit \tt{rd}. This simplifies rename logic, which prevents either the need to know the instruction first before accessing the rename tables, or it prevents adding more ports to remove the instruction decode off the critical path.
 \item [\tt{rs1}, \tt{rs2}, \tt{rs3}, \tt{rd} are always in the same place] This allows decode and rename to proceed in parallel. 
@@ -80,6 +80,8 @@ BOOM (currently) does not implement the ``C" compressed extension nor the ``V" v
 \section{The \Chisel\ Hardware Construction Language}
 
 BOOM is implemented in the \Chisel\ hardware construction language.  More information about \Chisel\ can be found at (\url{http://chisel.eecs.berkeley.edu}). 
+
+\newpage
 
 \section{Quick-start}
 
@@ -139,7 +141,7 @@ The code structure is shown below:
   \item regfile.scala {\footnotesize \color{red} register file.}
   \item registerread.scala {\footnotesize \color{red} registerRead stage and bypassing.}
   \item rename.scala {\footnotesize \color{red} register renaming logic.}
-  \item rob.scala {\footnotesize \color{red} re-order buffer}
+  \item rob.scala {\footnotesize \color{red} re-order buffer.}
   \item tile.scala {\footnotesize \color{red} top-level tile.}
   \item util.scala {\footnotesize \color{red} utility code.}
 
@@ -171,16 +173,20 @@ To manage the wide array of actively developed projects that encompass Rocket-ch
 
 \begin{quote}
 \begin{itemize}
-\item \verb=${LAB3ROOT}=/\begin{itemize}
+\item \verb=rocket-chip=/\begin{itemize}
 
   \item boom/ {\footnotesize \color{red} Git submodule of the \Chisel\ source code for the BOOM core.}
   \item chisel {\footnotesize \color{red}  The source code to the {\tt Chisel} language itself.}
+  \item csrc/ {\footnotesize \color{red} Utility C/C++ source code.}
+  \item dramsim2/ {\footnotesize \color{red} Git submodule of a C++ DRAM emulator.}
   
   \item emulator/ {\footnotesize \color{red} C++ simulation tools and support.}\begin{itemize}
     \item generated-src/{\footnotesize \color{red} Auto-generated C++ code.} 
     \item Makefile {\footnotesize \color{red} Makefile for C++ simulation.}
     \item output/{\footnotesize \color{red} Output files from C++ simulation runs.} 
     \end{itemize}
+  \item fpga-zynq/ {\footnotesize \color{red} Git submodule of the zynq FPGA tools.}
+  \item fsim/ {\footnotesize \color{red} The FPGA Verilog simulation and build directories. }
   \item junctions/ {\footnotesize \color{red} Git submodule of the \Chisel\ source code for the uncore and off-chip network.}
  \item riscv-tools/{\footnotesize \color{red} Git submodule that points to the RISC-V toolchain.}
  \begin{itemize} 
@@ -195,6 +201,8 @@ To manage the wide array of actively developed projects that encompass Rocket-ch
   \item rocket/ {\footnotesize \color{red} Git submodule of the \Chisel\ source code for the Rocket core (used as a library of processor components).}
       \item sbt/ {\footnotesize \color{red} {\tt Chisel}/Scala voodoo.}
   \item uncore/ {\footnotesize \color{red} Git submodule of the \Chisel\ source code for the uncore components (including LLC).}
+    \item vsim/ {\footnotesize \color{red} The ASIC Verilog simulation and build directories. }
+    \item zscale/ {\footnotesize \color{red} Git submodule of the \Chisel\ source code for the zscale micro-controller core. }
    
 \end{itemize}
 \end{itemize}
