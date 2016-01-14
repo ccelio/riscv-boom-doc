@@ -19,12 +19,11 @@ BOOM instantiates the i-cache found in the Rocket processor source code.  The i-
 
 To save power, the i-cache reads out a fixed number of bytes (aligned) and stores the instruction bits into a register. Further instruction fetches can be managed by this register. The i-cache is only fired up again once the fetch register has been exhausted (or a branch prediction directs the PC elsewhere).  
 
-The i-cache does not (currently) support fetching across cache-lines, nor does it support fetching unaligned relative to the superscalar fetch address.
-
+%When a miss occurs, the cache-line is returned in smaller chunks over a parameterizable N refill cycles. The size of a refill chunk dictates the width of the instantiated memory bank. Thus, within a way, a cache-line is striped across the physical memory bank to match the incoming refill size. To minimize power, at most only one row of the memory bank is read a cycle, which dictates the maximum size of the fetch register. Thus, the i-cache (currently) does not support fetching instruction packets that straddle across a memory bank row.  Worded another way, if BOOM is parameterized to have 64 byte cache lines and the uncore returns 16 bytes per cycle over 4 cycles, 
+ 
+The i-cache does not (currently) support fetching across cache-lines, nor does it support fetching unaligned relative to the superscalar fetch address.\footnote{This constraint is due to the fact that a cache-line is not stored in a single row of the memory bank, but rather is striped across a single bank to match the refill size coming from the uncore.  Fetching unaligned would require modification of the underlying implementation, such as banking the i-cache such that consecutive chunks of a cache-line could be accessed simultaneously.}
 
 The i-cache does not (currently) support hit-under-miss.  If an icache miss occurs, the icache will not accept any further requests until the miss has been handled.  This is less than ideal for scenarios in which the pipeline discovers a branch mispredict and would like to redirect the icache to start fetching along the correct path. 
-
-%When a miss occurs, the cache-line is returned in smaller chunks over a parameterizable N refill cycles. The size of a refill chunk dictates the width of the instantiated memory bank. Thus, within a way, a cache-line is striped across the physical memory bank to match the incoming refill size. To minimize power, at most only one row of the memory bank is read a cycle, which dictates the maximum size of the fetch register. Thus, the i-cache (currently) does not support fetching instruction packets that straddle across a memory bank row.  Worded another way, if BOOM is parameterized to have 64 byte cache lines and the uncore returns 16 bytes per cycle over 4 cycles, 
 
 
 The front-end (currently) only handles the RV64G ISA, which uses fixed-size 4 bytes instructions. 
