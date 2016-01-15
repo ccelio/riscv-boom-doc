@@ -46,11 +46,7 @@ Some accelerators may wish to take advantage of speculative instructions (or eve
 
 \section{The Vector (``V") ISA Extension}
 
-Implementing the Vector Extension in BOOM would open up the ability to leverage performance (or energy-efficiency) improvements in running data-level parallel codes (DLP). 
-
-While it would be relatively easy to add vector arithmetic operations to BOOM, the significant challenges lay in the vector load/store unit. 
-
-\TODO{...}
+Implementing the Vector Extension in BOOM would open up the ability to leverage performance (or energy-efficiency) improvements in running data-level parallel codes (DLP).  While it would be relatively easy to add vector arithmetic operations to BOOM, the significant challenges lie in the vector load/store unit. 
 
 
 \section{The Compressed (``C") ISA Extension}
@@ -83,10 +79,10 @@ The C Extension provides the following challenges to micro-architects, a few inc
 
 The last point requires some additional ``statefulness" in the Fetch Unit, as fetching all of the pieces of an instruction may take multiple cycles. 
 
-The following describes the proposed implementation of RVC for BOOM:
+The following describes the proposed implementation strategy of RVC in BOOM:
 
 \begin{itemize}
-\item Implement RVC in the Rocket in-order core.  Done properly, BOOM will then gain RVC support almost entirely for free (modulo any $+4$ assumptions in the code base).
+\item Implement RVC in the Rocket in-order core.  Done properly, BOOM may then gain RVC support almost entirely for free (modulo any $+4$ assumptions in the code base).
 \item Move BOOM's {\em Fetch Buffer} into Rocket's front-end. Rocket will need the statefulness to handle wrap-around issues with fetching unaligned 32 bit instructions.  A non-RVC Rocket core can optionally remove this buffer. 
 \item Expand 16-bit instructions as they enter (or possibly exit) the {\em Fetch Buffer}. 
 \item Minimize latency by placing 16b$\rightarrow$32b expanders at every half-word start. 
@@ -94,7 +90,7 @@ The following describes the proposed implementation of RVC for BOOM:
 
 \subsection{Challenging Implementation Details}
 
-There are many challenges to implementing RVC in BOOM. First, although all 16 bit encodings map to a 32b version, {\bf the behavior of some 16b instructions are different from their 32b counterparts}!  A JAL instruction writes the address of the following instruction to {\tt rd} - but whether that is $PC+2$ or $PC+4$ depends on whether it's the 16b JAL or a 32b JAL!  Likewise, a mispredicted not-taken branch redirects the fetch unit to $PC+2$ or $PC+4$ depending on whether the branch was the compressed version or not. {\bf Thus, the pipeline must track whether any given instruction was originally a compressed 16b instruction or not.}
+There are many challenging corner cases to consider with adding RVC support to BOOM. First, although all 16 bit encodings map to a 32b version, {\bf the behavior of some 16b instructions are different from their 32b counterparts}!  A JAL instruction writes the address of the following instruction to {\tt rd} - but whether that is $PC+2$ or $PC+4$ depends on whether it's the 16b JAL or a 32b JAL!  Likewise, a mispredicted not-taken branch redirects the fetch unit to $PC+2$ or $PC+4$ depending on whether the branch was the compressed version or not. {\bf Thus, the pipeline must track whether any given instruction was originally a compressed 16b instruction or not.}
 
 The branch prediction units will also require a careful rethink. The BTB tracks which instructions are {\em predicted-taken} branches and redirects the PC as desired. For a superscalar {\em fetch packet}, the BTB must help denote which instruction is to be blamed for the taken prediction to help mask off any invalid instructions that come afterward within the {\em fetch packet}. RVC makes this much more difficult, as some {\em predicted-taken} branches can wrap around fetch groupings/cache lines/virtual page boundaries. Thus, the ``taken" prediction must be attached to a tag-hit on the {\em end} of the branch instruction.  This handles fetching the first part of the branch (and predicting ``not-taken"), then fetching the second part (which hits in the BTB and predicts ``taken"), and only then redirecting the front-end to the predicted-taken PC target. 
 
