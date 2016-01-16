@@ -39,3 +39,8 @@ The first is a R10K-style un-ordered issue window.\cite{mipsr10k}  Dispatching i
 
 The second available policy is an age-ordered issue window.  Dispatched instructions are placed into the bottom of the issue window (at lowest priority). Every cycle, every instruction is shifted upwards (the issue window is a ``collapsing queue").  Thus, the oldest instructions will have the highest issue priority.  While this increases performance by scheduling older branches and older loads as soon as possible, it comes with a potential energy penalty as potentially every issue window slot is being read and written to on every cycle. 
 
+\section{Wake-up}
+
+There are two types of wake-up in BOOM - {\em fast} wakeup and {\em slow} wakeup.  Because ALU micro-ops can send their write-back data through the bypass network, issued ALU micro-ops will broadcast their wakeup to the issue-window as they are issued. 
+
+However, floating-point operations, loads, and variable latency operations are not sent through the bypass network, and instead the wakeup signal comes from the register file ports during the {\em write-back} stage. 
