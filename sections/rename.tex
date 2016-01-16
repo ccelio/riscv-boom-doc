@@ -62,6 +62,15 @@ The free-list tracks the physical registers that are currently un-used and is us
 
 The Free List is implemented as a bit-vector.  A priority decoder can then be used to find the first free register. BOOM uses a cascading priority decoder to allocate multiple registers per cycle.\footnote{A two-wide rename stage could use two priority decoders starting from opposite ends.}
 
+On every branch (or jalr), the rename map tables are snapshotted to allow single-cycle recovery on a branch misprediction. Likewise, the Free List also sets aside a new ``Allocation List", initialized to zero.  As new physical registers are allocated, the Allocation List for each branch is updated to track all of the physical registers that have been allocated after the branch. If a misspeculation occurs, its Allocation List is added back to the Free List by {\em OR'ing} the branch's Allocation List with the Free List. 
+
 \section{Stale Destination Specifiers}
 
 For instructions that will write a register, the map table is read to get the {\em stale physical destination specifier} (``stale pdst").  Once the instruction commits, the {\em stale pdst} is returned to the free list, as no future instructions will read it.
+
+%\section{Handling Branch Mispredictions}
+%
+%Every instruction in the pipeline has a ``branch mask", which is a bit-vector describing each live branch that it is currently being speculated under. Each branch is allocated a ``branch tag", and a corresponding branch mask bit such that every following instruction will have that corresponding bit set in its own branch mask.  Once a branch is resolved, the corresponding branch mask bit is cleared in every instruction's branch-mask. If the branch is misspeculated, then all instructions with the corresponding branch mask bit is killed. 
+
+
+
