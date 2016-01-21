@@ -20,7 +20,7 @@ Entries in the Load Queue (LAQ) are allocated in the {\em Decode} stage ({\tt la
 
 Once a load address has been computed and placed in the LAQ, the corresponding {\em valid} bit is set ({\tt laq\_val}). 
 
-Loads are optimistically fired to memory on arrival to the LSU (getting loads fired early is a huge benefit of out--of--order pipelines).  Simultaneously, the load instruction compares its address with all of the store addresses that it depends on.  If there is a match, the memory request is killed.  If the corresponding store data is present, then the store data is {\em forwarded} to the load and the load marks itself as having {\em succeeded}.  If the store data is not present, then the load goes to {\em sleep}.  Loads that have been put to sleep are woken at {\em Commit} time.\footnote{Higher performance processors will track {\em why} a load was put to sleep and wake it up once the blocking cause has been alleviated.}
+Loads are optimistically fired to memory on arrival to the LSU (getting loads fired early is a huge benefit of out--of--order pipelines).  Simultaneously, the load instruction compares its address with all of the store addresses that it depends on.  If there is a match, the memory request is killed.  If the corresponding store data is present, then the store data is {\em forwarded} to the load and the load marks itself as having {\em succeeded}.  If the store data is not present, then the load goes to {\em sleep}.  Loads that have been put to sleep are retried at a later time.\footnote{Higher-performance processors will track {\em why} a load was put to sleep and wake it up once the blocking cause has been alleviated.}
 
 
 \subsection{Memory Ordering Failures}
