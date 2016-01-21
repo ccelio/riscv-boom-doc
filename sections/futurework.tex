@@ -62,7 +62,7 @@ This section describes how to approach adding the Compressed ISA Extension to BO
 	\centering
 	\centerline{\includegraphics[scale =1] {figures/frontend}}
 	\caption{ \small The Fetch Unit. The grey box encompasses the Rocket front-end, which is re-used by BOOM.}
-	\label{fig:lsu}
+	\label{fig:futurework-frontend}
 \end{figure}
 
 BOOM re-uses the front-end design from Rocket, a 5-stage in-order core.  BOOM then takes instructions returning (the {\em fetch packet}) from the Rocket front-end, quickly decodes the instructions for branch prediction, and pushes the {\em fetch packet} into the {\em Fetch Buffer}. 
