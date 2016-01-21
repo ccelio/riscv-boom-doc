@@ -105,6 +105,9 @@ To build a BOOM C++ emulator and run BOOM through a couple of simple tests:
 
 \texttt{\$} \verb=cd ../emulator; make run CONFIG==\verb=BOOMCPPConfig=
 
+\
+
+{\bf Note:} this assumes you have already installed the riscv-tools toolchain.  If not, visit (\url{https://github.com/riscv/riscv-tools}).
 
 \section{The BOOM Repository}
 
@@ -208,7 +211,7 @@ To manage the wide array of actively developed projects that encompass Rocket-ch
 \end{itemize}
 \end{quote}
 
-\subsection{The Rocket Core - a Library of Processor Components!}
+\subsection{The Rocket Core - a Library of Processor Components!}\label{sec:rocket}
 
 Rocket is a 5-stage in-order core that implements the RV64G ISA and page-based virtual memory.  The original design purpose of the Rocket core was to enable architectural research into vector co-processors by serving as the scalar {\em Control Processor}.  Some of that work can be found at (\url{http://hwacha.org}). 
 
