@@ -2,6 +2,8 @@ The BOOM processor can be found at (https://github.com/ucb-bar/riscv-boom).
 
 You can download this document from (https://ccelio.github.io/riscv-boom-doc).
 
+There is also a Google group at (https://groups.google.com/forum/#!forum/riscv-boom).
+
 To build (and then read) the latest version of this document using Latex:
 
     $ git clone https://github.com/ccelio/riscv-boom-doc.git
