@@ -2,19 +2,19 @@
 
 
 The ROB tracks the state of all inflight instructions in the pipeline. The role of the ROB is to provide the illusion to the programmer that his program executes in-order. 
-After instructions are decode and renamed, they are then dispatched to the ROB and the issue window and marked as {\em busy}. 
+After instructions are decoded and renamed, they are then dispatched to the ROB and the issue window and marked as {\em busy}. 
 As instructions finish execution, they inform the ROB and are marked {\em not busy}. 
-Once the ``head" of the ROB is no longer busy, the instruction is {\em committed}, and it's architectural state now visible. If an exception occurs and the excepting instruction is at the head of the ROB, the pipeline is flushed and no architectural changes that occurred after the excepting instruction are not made visible. The ROB then redirects the PC to the appropriate exception handler. 
+Once the ``head" of the ROB is no longer busy, the instruction is {\em committed}, and it's architectural state now visible. If an exception occurs and the excepting instruction is at the head of the ROB, the pipeline is flushed and no architectural changes that occurred after the excepting instruction are made visible. The ROB then redirects the PC to the appropriate exception handler. 
 
 \section{The ROB Organization}
 
 The ROB is, conceptually, a circular buffer that tracks all inflight instructions in-order. The oldest instruction is pointed to by the {\em commit head}, and the newest instruction will be added at the {\em rob tail}. 
 
-To facilitate superscalar {\em Dispatch} and {\em Commit}, the ROB is implemented as a circular buffer with $W$ banks (where $W$ is the {\em dispatch} and {\em commit} width of the machine). This organization is shown in Figure \ref{fig:rob}. 
+To facilitate superscalar {\em Dispatch} and {\em Commit}, the ROB is implemented as a circular buffer with $W$ banks (where $W$ is the {\em dispatch} and {\em commit} width of the machine\footnote{This design sets up the {\em Dispatch} and {\em Commit} widths of BOOM to be the same. However, that is not necessarily a fundamental constraint, and it would be possible to orthogonalize the {\em Dispatch} and {\em Commit} widths, just with more added control complexity.}). This organization is shown in Figure \ref{fig:rob}. 
 
 %\subsection{Dispatch}
 
-At {\em dispatch}, up to $W$ instructions are written from the {\em fetch packet} into an ROB row, where each instruction is written to a different bank across the row.  As the instructions within a {\em fetch packet} are all consecutive (and aligned) in memory, this allows a single PC to be associated with the entire {\em fetch packet} (and the instruction's position within the {\em fetch packet} provides the low-order bits to its own PC).  While this means that branching code will leave 
+At {\em dispatch}, up to $W$ instructions are written from the {\em fetch packet} into an ROB row, where each instruction is written to a different bank across the row.  As the instructions within a {\em fetch packet} are all consecutive (and aligned) in memory, this allows a single PC to be associated with the entire {\em fetch packet} (and the instruction's position within the {\em fetch packet} provides the low-order bits to its own PC).  While this means that branching code will leave bubbles in the ROB, it makes adding more instructions to the ROB very cheap as the expensive costs are amortized across each ROB row.
 
 %An entire {\em fetch packet} is decoded, renamed, and then dispatched together.\footnote{This is not strictly true, as it is possible, say due to a lack of resources, for some of the instructions to be dispatched before the full {\em fetch packet} can be dispatched.} 
 %This constraint couples the {\em Fetch Width} to the {\em Decode}, {\em Rename}, and {\em Dispatch} widths. 
@@ -69,7 +69,7 @@ This information is incredibly expensive to store. Instead of passing PCs down t
 
 \section{The Commit Stage}
 
-When the instruction at the {\em commit head} is no longer busy (and it is not excepting), it may be committed and its changes to the architectural state of the machine made visible. For superscalar commit, the entire ROB row is analyzed for {\em not busy} instructions (and thus, up to the entire ROB row may be committed in a single cycle). The ROB will greedily commit as many instructions as it can per row to release resource as soon as possible. However, the ROB does not (currently) look across multiple rows to find commit-able instructions. 
+When the instruction at the {\em commit head} is no longer busy (and it is not excepting), it may be {\em committed}, i.e., its changes to the architectural state of the machine are made visible. For superscalar commit, the entire ROB row is analyzed for {\em not busy} instructions (and thus, up to the entire ROB row may be committed in a single cycle). The ROB will greedily commit as many instructions as it can per row to release resource as soon as possible. However, the ROB does not (currently) look across multiple rows to find commit-able instructions. 
 
 Only once a store has been committed may it be sent to memory. For superscalar committing of stores, the LSU is told ``how many stores" may be marked as committed. The LSU will then drain the committed stores to memory as it sees fit. 
 
@@ -78,13 +78,13 @@ When an instruction (that writes to a register) commits, it then frees the {\em 
 
 \section{Exceptions and Flushes}
 
-Exceptions are handled when the instruction at the {\em commit head} is excepting. The pipeline is then flushed and the ROB emptied. The rename map tables must be reset to represent the true, non-speculative {\em committed} state. The front-end is then directed to the appropriate PC.  If an architectural exception, this is the {\em exception vector} as specified by the Control/Status Registers.  If it is a micro-architectural exception (e.g., a load/store ordering misspeculation) the failing instruction is refetched and execution can begin anew. 
+Exceptions are handled when the instruction at the {\em commit head} is excepting. The pipeline is then flushed and the ROB emptied. The rename map tables must be reset to represent the true, non-speculative {\em committed} state. The front-end is then directed to the appropriate PC.  If it is an architectural exception, the excepting instruction's PC (referred to as the {\em exception vector}) is sent to the Control/Status Register file.  If it is a micro-architectural exception (e.g., a load/store ordering misspeculation) the failing instruction is refetched and execution can begin anew. 
 
 \subsection{Parameterization - Rollback versus Single-cycle Reset}
 
-The behavior of resetting the map tables is parameterizable.  The first option, as the only map table snapshots are for branches, is to rollback the ROB one row per cycle to unwind the rename state (this is the behavior of the MIPS R10k\cite{mipsr10k}).  For each instruction, the {\em stale physical destination} register is written back into the map table for its {\em logical destination} specifier. 
+The behavior of resetting the map tables is parameterizable.  The first option is to rollback the ROB one row per cycle to unwind the rename state (this is the behavior of the MIPS R10k\cite{mipsr10k}).  For each instruction, the {\em stale physical destination} register is written back into the map table for its {\em logical destination} specifier. 
 
-However, a faster single-cycle reset is available.  This is accomplished by using another rename snapshot that tracks the {\em committed} state of the rename tables. This {\em committed map table} is updated as instructions commit. 
+A faster single-cycle reset is available.  This is accomplished by using another rename snapshot that tracks the {\em committed} state of the rename tables. This {\em committed map table} is updated as instructions commit.\footnote{The tradeoff here is between longer latencies on exceptions versus an increase in area and wiring.}
 
 \subsection{Causes}
 
@@ -92,10 +92,10 @@ The RV64G ISA provides relatively few exception sources:
 
 \begin{quote}
 \begin{description}
-\item[Load/Store Unit] - page faults and memory ordering speculation errors
+\item[Load/Store Unit] - page faults
 \item[Branch Unit] - misaligned fetches
 \item[Decode Stage] - all other exceptions and interrupts can be handled before the instruction is dispatched to the ROB
 \end{description}
 \end{quote}
 
-Note that memory ordering speculation errors are treated as exceptions, but actually only cause a pipeline ``retry". 
+Note that memory ordering speculation errors also originate from the Load/Store Unit, and are treated as exceptions in the BOOM pipeline (actually they only cause a pipeline ``retry"). 
