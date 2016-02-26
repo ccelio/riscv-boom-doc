@@ -71,6 +71,21 @@ boxpos=b,
 \newcommand{\rocketchip}{{\em Rocket-chip}}
 
 
+% allow us to add comentary
+\newenvironment{commentary}
+{ \vspace{-0.2in}
+  \begin{quotation}
+  \noindent
+  \small \em
+  \rule{\linewidth}{1pt}\\
+}
+{
+  \end{quotation}
+  \vspace{-0.2in}
+}
+
+
+
 \let\oldthebibliography=\thebibliography
 \let\endoldthebibliography=\endthebibliography
 \renewenvironment{thebibliography}[1]{%
