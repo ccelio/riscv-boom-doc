@@ -65,12 +65,12 @@ Un-pipelined functional units (e.g., a divider) take an variable (and unknown) n
 
 Speculation support is provided by tracking the {\em branch mask} of the micro-op in the functional unit. 
 
-The only requirement of the expert-written un-pipelined functional unit is to provide a {\em kill} signal to quickly remove misspeculated micro-ops.
+The only requirement of the expert-written un-pipelined functional unit is to provide a {\em kill} signal to quickly remove misspeculated micro-ops.\footnote{This constraint could be relaxed by waiting for the un-pipelined unit to finish before de-asserting its busy signal and suppressing the {\em valid} output signal.}
 
 \begin{figure}[htbp]
 	\centering
 	\centerline{\includegraphics[scale =0.75] {figures/functional-unit-hierarchy}}
-	\caption{ \small The dashed ovals are the low-level functional units written by experts, the squares are concrete classes that instantiate the low-level functional units, and the octagons are abstract classes that provide generic speculation support and interfacing with the BOOM pipeline.}
+	\caption{ \small The dashed ovals are the low-level functional units written by experts, the squares are concrete classes that instantiate the low-level functional units, and the octagons are abstract classes that provide generic speculation support and interfacing with the BOOM pipeline. The floating point divide and squart-root unit doesn't cleanly fit either the Pipelined nor Unpipelined abstract class, and so directly inherits from the FunctionalUnit super class.}
 	\label{fig:functional-unit-hierarchy}
 \end{figure}
 
@@ -112,9 +112,27 @@ See Chapter \ref{sec:lsu} for more details on the LSU.
 
 The low-level floating point units used by BOOM come from the Rocket processor (\url{https://github.com/ucb-bar/rocket}) and hardfloat (\url{https://github.com/ucb-bar/berkeley-hardfloat}) repositories.  Figure \ref{fig:functional-unit-fpu} shows the class hierarchy of the FPU. 
 
-To make the scheduling of the write-port trivial, all of the FP units are padded to have the same latency.\footnote{Rocket instead handles write-port scheduling by killing and refetching the offending instruction (and all instructions behind it) if there is a write-port hazard detected. This would be far more heavy-handed to do in BOOM.}
+To make the scheduling of the write-port trivial, all of the pipelined FP units are padded to have the same latency.\footnote{Rocket instead handles write-port scheduling by killing and refetching the offending instruction (and all instructions behind it) if there is a write-port hazard detected. This would be far more heavy-handed to do in BOOM.}
 
+\section{Floating Point Divide and Square-root Unit}
 
+BOOM fully supports floating point divide and square-root operations using a single ``{\tt {FDiv/Sqrt}}" (or \fdiv\ for short).  BOOM accomplishes this by instantiating a double-precision {\tt {divSqrtRecF64}} unit from the {\tt hardfloat} repository.  The {\tt {divSqrtRecF64}} unit comes with the following features/constraints:
+
+\begin{itemize}
+\item expects 65-bit recoded double-precision inputs
+\item provides a 65-bit recoded double-precision output
+\item can execute a divide operation and a square-root operation simultaneously
+\item operations are unpipelined and take an unknown, variable latency
+\item provides an {\em unstable} FIFO interface
+\end{itemize}
+
+Single-precision operations have their operands upscaled to double-precision (and then the output downscaled).\footnote{It is cheaper to perform the SP-DP conversions than it is to instantiate a single-precision fdivSqrt unit.}
+
+Although the \fdiv\ unit is unpipelined, it does not fit cleanly into the Pipelined/Unpipelined abstraction used by the other functional units (Fig \ref{fig:functional-unit-hierarchy}).  This is because the {\tt {divSqrtRecF64}} unit provides an unstable FIFO interface: although the \fdiv\ unit may provide a {\em ready} signal on Cycle $i$, there is no guarantee that it will continue to be {\em ready} on Cycle $i+1$, even if no operations are enqueued. This proves to be a challenge, as the issue window may attempt to issue an \fdiv\ instruction but cannot be certain the \fdiv\ unit will  accept it once it reaches the \fdiv\ unit on a later cycle.  
+
+The solution is to add extra buffering within the \fdiv\ unit to hold instructions until they can be released directly into the {\tt {divSqrtRecF64}} unit. If the buffering of the \fdiv\ unit fills up, back pressure can be safely applied to the issue window.\footnote{It is this ability to hold multiple inflight instructions within the \fdiv\ unit simultaneously that breaks the ``only one instruction at a time" assumption required by the UnpipelinedFunctionalUnit abstract class.}
+
+%\footnote{The \fdiv\ unit cannot inherent from the PipelinedFunctionalUnit class, as it is not pipelined and don't make use of any of the auto-generated pipeline speculation support infrastructure. However, it also cannot inherent from the UnpipelinedFunctionalUnit class, because it's auto-generated infrastructure assumes that only one micro-op will be present in the functional unit at any given point in time. The \fdiv\ unit, with its unstable interface (which demands extra buffering) and ability to support divide and square-root operations simultaneously, requires hand-writing its own speculation support code and thus inherits directly from the high-level FunctionalUnit abstract class (as it still maintains the same high-level interfaces).}
 
 \section{Parameterization}
 
@@ -153,4 +171,4 @@ Additional parameterization, regarding things like the latency of the FP units c
 
 A set of Control/Status Register (CSR) instructions allow the atomic read and write of the Control/Status Registers.  These architectural registers are separate from the integer and floating registers, and include the cycle count, retired instruction count, status, exception PC, and exception vector registers (and many more!).  Each CSR has its own required privilege levels to read and write to it and some have their own side-effects upon reading (or writing).  
 
-BOOM (currently) does not rename {\em any} of the CSRs, and in addition to the potential side-effects caused by reading or writing a CSR, {\bf BOOM will only execute a CSR instruction non-speculatively.}\footnote{There is a lot of room to play regarding the CSRs. For example, it is probably a good idea to rename the {\tt sscratch} register (dedicated for use by the supervisor) as it may see a lot of use in some kernel code and it causes no side-effects.}  This is accomplished by marking the CSR instruction as a ``unique" (or ``serializing") instruction - the ROB must be empty before it may proceed to the Issue Window (and no instruction may follow it until it has finished execution and been committed by the ROB).  It is then issued by the Issue Window, reads the appropriate operands from the Physical Register File, and is then sent to the CSRFile.\footnote{The CSRFile is a Rocket component.}  The CSR instruction executes in the CSRFile and then writes back data as required to the Physical Register File. The CSRFile may also emit a PC redirect and/or an exception as part of executing a CSR instruction (e.g., a {\tt syscall}). 
+BOOM (currently) does not rename {\em any} of the CSRs, and in addition to the potential side-effects caused by reading or writing a CSR, {\bf BOOM will only execute a CSR instruction non-speculatively.}\footnote{There is a lot of room to play with regarding the CSRs. For example, it is probably a good idea to rename the {\tt {sscratch}} register (dedicated for use by the supervisor) as it may see a lot of use in some kernel code and it causes no side-effects.}  This is accomplished by marking the CSR instruction as a ``unique" (or ``serializing") instruction - the ROB must be empty before it may proceed to the Issue Window (and no instruction may follow it until it has finished execution and been committed by the ROB).  It is then issued by the Issue Window, reads the appropriate operands from the Physical Register File, and is then sent to the CSRFile.\footnote{The CSRFile is a Rocket component.}  The CSR instruction executes in the CSRFile and then writes back data as required to the Physical Register File. The CSRFile may also emit a PC redirect and/or an exception as part of executing a CSR instruction (e.g., a {\tt syscall}). 
