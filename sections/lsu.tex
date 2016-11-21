@@ -3,7 +3,9 @@
 
 The Load/Store Unit is responsible for deciding when to fire memory operations to the memory system.  There are three queues: the Load Address Queue (LAQ), the Store Address Queue (SAQ), and the Store Data Queue (SDQ).  Load instructions generate a ``uopLD" micro-op.  When issued, ``uopLD" calculates the load address and places its result in the LAQ.  Store instructions (may) generate {\em two} micro-ops,  ``uopSTA" (Store Address Generation) and ``uopSTD" (Store Data Generation).  The STA micro-op calculates the store address and places its result in the SAQ queue.  The STD micro-op moves the store data from the register file to the SDQ.  Each of these micro-ops will issue out of the {\em Issue Window} as soon their operands are ready.  See Section \ref{sec:storeuops} for more details on the store micro-op specifics. 
 
-\subsection{Store Instructions}
+
+
+\section{Store Instructions}
 
 Entries in the Store Queue\footnote{When I refer to the {\em Store Queue}, I really mean both the SAQ and SDQ.} are allocated in the {\em Decode} stage (the appropriate bit in the {\tt stq\_entry\_val} vector is set).  A ``valid" bit denotes when an entry in the SAQ or SDQ holds a valid address or data ({\tt saq\_val} and {\tt sdq\_val} respectively).  Once a store instruction is committed, the corresponding entry in the Store Queue is marked as committed.  The store is then free to be fired to the memory system at its convenience.  Stores are fired to the memory in program order.
 
@@ -14,7 +16,7 @@ Stores are inserted into the issue window as a single instruction (as opposed to
 
 However, it is common for store addresses to be known well in advance of the store data.  Store addresses should be moved to the SAQ as soon as possible to allow later loads to avoid any memory ordering failures. Thus, the issue window will emit uopSTA or uopSTD micro-ops as required, but retain the remaining half of the store until the second operand is ready.
 
-\subsection{Load Instructions}
+\section{Load Instructions}
 
 Entries in the Load Queue (LAQ) are allocated in the {\em Decode} stage ({\tt laq\_entry\_val}).  In {\em Decode}, each load entry is also given a {\em store mask} ({\tt laq\_st\_mask}), which marks which stores in the Store Queue the given load depends on.  When a store is fired to memory and leaves the Store Queue, the appropriate bit in the {\em store mask} is cleared.
 
@@ -23,7 +25,26 @@ Once a load address has been computed and placed in the LAQ, the corresponding {
 Loads are optimistically fired to memory on arrival to the LSU (getting loads fired early is a huge benefit of out--of--order pipelines).  Simultaneously, the load instruction compares its address with all of the store addresses that it depends on.  If there is a match, the memory request is killed.  If the corresponding store data is present, then the store data is {\em forwarded} to the load and the load marks itself as having {\em succeeded}.  If the store data is not present, then the load goes to {\em sleep}.  Loads that have been put to sleep are retried at a later time.\footnote{Higher-performance processors will track {\em why} a load was put to sleep and wake it up once the blocking cause has been alleviated.}
 
 
-\subsection{Memory Ordering Failures}
+
+\section{The BOOM Memory Model}
+
+Currently, as of October 2016, the RISC-V memory model is underspecified and will take some time to settle on an exact specification. However, the current RISC-V specification describes as {\em relaxed consistency} model~\cite{Gharachorloo:1990:MCE:325096.325102} in which stores and loads may be freely re-ordered. 
+
+BOOM currently exhibits the following behavior:
+
+\begin{enumerate}
+\item Write->Read constraint is relaxed (newer loads may execute before older stores).
+\item Read->Read constraint is currently relaxed (loads to the same address may be reordered). 
+\item A thread can read its own writes early. 
+\end{enumerate}
+
+
+\subsection{Ordering Loads to the Same Address}
+
+The RISC-V memory model is expected to strengthen the requirement that loads to the same address be ordered.\footnote{Technically, a {\em fence.r.r} could be used to provide the correct execution of software on machines that reorder dependent loads. However, there are two reasons for an ISA to disallow re-ordering of dependent loads: 1) no other popular ISA allows this relaxation, and thus porting software to RISC-V could face extra challenges, and 2) cautious software may be too liberal with the appropriate {\em fence} instructions causing a slow-down in software. Thankfully, enforcing ordered dependent loads may not actually be very expensive. For one, load addresses are likely to be known early - and are probably likely to execute in-order anyways. Second, misordered loads are only a problem in the cache of a cache coherence probe, so performance penalty is likely to be negligible. The hardware cost is also negligible - loads can use the same CAM search port on the LAQ that stores must already use.  While this may become an issue when supporting one load and one store address calculation per cycle, the extra CAM search port can either be mitigated via banking or will be small compared to the other hardware costs required to support more cache bandwidth.} This requires loads to search against other loads for potential address conflicts. If a younger load executes before an older load with a matching address, the younger load must be replayed and the instructions after it in the pipeline flushed. However, this scenario is only required if a cache coherence probe event snooped the core's memory, exposing the reordering to the other threads.  If no probe events occurred, the load re-ordering may safely occur. 
+
+
+\section{Memory Ordering Failures}
 
 The Load/Store Unit has to be careful regarding {\tt store$\rightarrow$load} dependences.  For the best performance, loads need to be fired to memory as soon as possible. 
 
@@ -53,3 +74,4 @@ See Figure \ref{fig:lsu} for more information about the Load/Store Unit.
 	\caption{ \small The Load/Store Unit.}
 	\label{fig:lsu}
 \end{figure}
+
