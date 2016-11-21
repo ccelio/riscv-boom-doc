@@ -124,7 +124,7 @@ However, as the BPD makes use of global history, this history must be reset when
 
 %When making a prediction, the BPD passes to the pipeline a ``response info packet".  This ``info packet" is stored in a ``branch re-order buffer" (BROB) until commit time.\footnote{These {\em info packets} are not stored in the ROB for two reasons - first, they correspond to {\em fetch packets}, not instructions.  Second, they are very expensive and so it is reasonable to size the BROB to be smaller than the ROB.}  Once all of the instructions corresponding to the ``info packet" is committed, the ``info packet" is set to the BPD (along with the eventual outcome of the branches) and the BPD is updated. 
 
-\subsection{Managing the Global History Register}
+\subsection{Managing the Global History Register}\label{sec:ghistory}
 
 The {\em global history register} is an important piece of a branch predictor. It contains the outcomes of the previous $N$ branches (where $N$ is the size of the global history register).\footnote{Actually, the direction of all conditional branches within a {\em fetch packet} are compressed (via an OR-reduction) into a single bit, but for this section, it is easier to describe the history register in slightly inaccurate terms.}
 
@@ -140,17 +140,73 @@ To facilitate exploring different global history-based BPD designs, an abstract 
 
 \subsubsection{The Branch Reorder Buffer (BROB)}
 
-\TODO{...}
+The Reorder Buffer (see Chapter \ref{chapter:rob}) maintains a record of all inflight instructions. Likewise, the Branch Reorder Buffer (BROB) maintains a record of all inflight branch predictions.  These two structure are decoupled as BROB entries are {\em incredibly} expensive and not all ROB entries will contain a branch instruction. As only roughly one in every six instructions is a branch, the BROB can be made to have fewer entries than the ROB to leverage additional savings.
+
+Each BROB entry corresponds to a single superscalar branch prediction. Said another way, there is a 1:1 correspondence between a single fetch cycle's prediction and a BROB entry.  
+For each prediction made, the branch predictor packs up data that it will need later to perform an update. For example, a branch predictor will want to remember what {\em index} a prediction came from so it can update the counters at that index later. This data is stored in the BROB. 
+
+When the last instruction in a fetch group is committed, the BROB entry is deallocated and sent to the branch predictor.  Using the data stored in the BROB entry, the branch predictor can perform any required updates to its prediction state. 
+
+There are a number of reasons to update the branch predictor is updated after {\em Commit}. It is crucial that the predictor only learns {\em correct} information. In a data cache, memory fetched from a wrong path execution may eventually become useful when later executions go to a different path.  But for a branch predictor, wrong path updates encode information that is pure pollution -- it takes up useful entries by storing information that is not useful and will never be useful.  Even if later iterations do take a different path, the history that got it there will be different.
+
+Of course, the latency between {\em Fetch} and {\em Commit} is inconvenient and can cause extra branch mispredictions to occur if multiple loop iterations are inflight. However, the BROB could be used to bypass branch predictions to mitigate this issue. Currently, this bypass behavior is not supported in BOOM.
+
+The BROB is broken up into two parts: the prediction {\em data} and the branch execution {\em metadata}.  The metadata tracks which instructions within the fetch packet where branches, which direction they took, and which branches were mispredicted (this requires random access). The prediction data is written once into the BROB upon instruction {\em Dispatch} and read out (and deallocated) during {\em Commit}.
+
 
 \subsubsection{Global History}
 
-\TODO{...}
+As discussed in Section \ref{sec:ghistory}, global history is a vital piece of any branch predictor.  As such, it is handled by the Abstract BranchPredictor class.  Any branch predictor extending the abstract BranchPredictor class gets access to global history without having to handle  snapshotting, updating, and bypassing.
+
+\subsubsection{Very Long Global History (VLHR)}
+
+Some branch predictors (see Section \ref{sec:tage}) require access to incredibly long histories -- over a thousand bits.  Global history is speculatively updated after each prediction and must be snapshotted and reset if a misprediction was made. Snapshotting a thousand bits is untenable.  Instead, VLHR is implemented as a circular buffer with a speculative head pointer and a commit head pointer.  As a prediction is made, prediction is written down at $VLHR[spec\_head]$ and the speculative head pointer is incremented and snapshotted. When a branch mispredicts, the head pointer is reset to $snapshot+1$ and the correct direction is written to $VLHR[snapshot]$.  In this manner, the snapshots are on the order of 10 bits, not 1000 bits.
+
+
+\subsubsection{Operating System-aware Global Histories}
+
+Although the data on its benefits is preliminary, BOOM does support OS-aware global histories.  The normal global history tracks all instructions from all privilege levels. A second {\em user-only global history} tracks only user-level instructions. 
+
+\subsection{The Two-bit Counter Tables}
+
+The basic building block of most branch predictors is the ``Two-bit Counter Table'' (2BC).  As a particular branch is repeatedly taken, the counter saturates upwards to the max value 3 ({\em 0b11}) or {\em strongly taken}.  Likewise, repeatedly not-taken branches saturate towards zero ({\em 0b00}).  The high-order bit specifies the {\em prediction} and the low-order bit specifies the {\em hysteresis} (how ``strong'' the prediction is).
+
+These two-bit counters are aggregated into a table. Ideally, a good branch predictor knows which counter to index to make the best prediction. However, to fit these two-bit counters into dense SRAM, a change is made to the 2bc finite state machine -- mispredictions made in the {\em weakly not-taken} state move the 2bc into the {\em strongly taken} state (and vice versa for {\em weakly taken} being mispredicted). The FSM behavior is shown in Figure \ref{fig:2bc-fsm}.
+
+\begin{figure}[ht]
+	\centering
+	\centerline{\includegraphics[scale =1] {figures/2bc-fsm}}
+	\caption{ \small Two-bit counter state machine.}
+	\label{fig:2bc-fsm}
+\end{figure}
+
+Although it's no longer strictly a ``counter", this change allows us to separate out the read and write requirements on the {\em prediction} and {\em hystersis} bits and place them in separate sequential memory tables. In hardware, the 2bc table can be implemented as follows:
+
+\begin{quote}
+The P-bit:
+\begin{itemize}
+\item {\bf read} - every cycle to make a prediction
+\item {\bf write} - only when a misprediction occurred (the value of the h-bit).
+\end{itemize}
+
+The H-bit:
+
+\begin{itemize}
+\item {\bf read} - only when a misprediction occurred.
+\item {\bf write} - when a branch is resolved (write the direction the branch took).
+\end{itemize}
+\end{quote}
+
+By breaking the high-order p-bit and the low-order h-bit apart, we can place each in 1 read/1write SRAM. A few more assumptions can help us do even better. Mispredictions are rare and branch resolutions are not necessarily occurring on every cycle. Also, writes can be delayed or even dropped altogether. Therefore, the {\em h-table} can be implemented using a single 1rw ported SRAM by queueing writes up and draining them when a read is not being performed. Likewise, the {\em p-table} can be implemented in 1rw ported SRAM by banking it -- buffer writes and drain when there is not a read conflict.
+
+
+A final note: SRAMs are not happy with a ``tall and skinny'' aspect ratio that the 2bc tables require. However, the solution is simple -- tall and skinny can be trivially transformed into a rectangular memory structure.  The high-order bits of the index can correspond to the SRAM row and the low-order bits can be used to mux out the specific bits from within the row. 
 
 \subsection{The GShare Predictor}
 
-\TODO{...}
+GShare is a simple but very effective branch predictor. Predictions are made by hashing the instruction address and the global history (typically a simple XOR) and then indexing into a table of two-bit counters. 
 
-\subsection{The TAGE Predictor}
+\subsection{The TAGE Predictor}\label{sec:tage}
 
 \TODO{...}
 
