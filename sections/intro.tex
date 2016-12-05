@@ -94,7 +94,7 @@ BOOM is implemented in the \Chisel\ hardware construction language.  More inform
 To build a BOOM C++ emulator and run BOOM through a couple of simple tests:
 \\
 
-\texttt{\$} \verb=export ROCKETCHIP_ADDONS==\verb="boom"=
+%\texttt{\$} \verb=export ROCKETCHIP_ADDONS==\verb="boom"=
 
 \texttt{\$} \verb=git clone https://github.com/ucb-bar/rocket-chip.git=
 
@@ -104,11 +104,7 @@ To build a BOOM C++ emulator and run BOOM through a couple of simple tests:
 
 \texttt{\$} \verb=git submodule update --init=
 
-\texttt{\$} \verb=cd riscv-tools=
-
-\texttt{\$} \verb=git submodule update --init --recursive riscv-tests=
-
-\texttt{\$} \verb=cd ../emulator; make run CONFIG==\verb=BOOMCPPConfig=
+\texttt{\$} \verb=cd emulator; make run CONFIG==\verb=BOOMConfig=
 
 \
 
@@ -184,17 +180,14 @@ To manage the wide array of actively developed projects that encompass Rocket-ch
 
   \item boom/ {\footnotesize \color{red} Git submodule of the \Chisel\ source code for the BOOM core.}
   \item chisel {\footnotesize \color{red}  The source code to the {\tt Chisel} language itself.}
+  \item firrtl {\footnotesize \color{red}  The source code to the {\tt FIRRTL} project.}
   \item csrc/ {\footnotesize \color{red} Utility C/C++ source code.}
-  \item dramsim2/ {\footnotesize \color{red} Git submodule of a C++ DRAM emulator.}
   
-  \item emulator/ {\footnotesize \color{red} C++ simulation tools and support.}\begin{itemize}
-    \item generated-src/{\footnotesize \color{red} Auto-generated C++ code.} 
-    \item Makefile {\footnotesize \color{red} Makefile for C++ simulation.}
-    \item output/{\footnotesize \color{red} Output files from C++ simulation runs.} 
+  \item emulator/ {\footnotesize \color{red} Verilator simulation tools and support.}\begin{itemize}
+    \item generated-src/{\footnotesize \color{red} Auto-generated Verilog code.} 
+    \item Makefile {\footnotesize \color{red} Makefile for Verilator simulation.}
+    \item output/{\footnotesize \color{red} Output files from Verilator simulation runs.} 
     \end{itemize}
-  \item fpga-zynq/ {\footnotesize \color{red} Git submodule of the zynq FPGA tools.}
-  \item fsim/ {\footnotesize \color{red} The FPGA Verilog simulation and build directories. }
-  \item junctions/ {\footnotesize \color{red} Git submodule of the \Chisel\ source code for the uncore and off-chip network.}
  \item riscv-tools/{\footnotesize \color{red} Git submodule that points to the RISC-V toolchain.}
  \begin{itemize} 
   \item riscv-tests/ {\footnotesize \color{red} Source code for benchmarks and tests.} \begin{itemize}
@@ -204,12 +197,15 @@ To manage the wide array of actively developed projects that encompass Rocket-ch
   \end{itemize}
    \item Makefrag {\footnotesize \color{red}  The high-level Makefile fragment.}
    
-  \item src/ {\footnotesize \color{red} \Chisel\ source code for top-level Rocket-chip.}
+  \item src/ {\footnotesize \color{red} \Chisel\ source code for rocket-chip.}
+  \begin{itemize}
   \item rocket/ {\footnotesize \color{red} Git submodule of the \Chisel\ source code for the Rocket core (used as a library of processor components).}
-      \item sbt/ {\footnotesize \color{red} {\tt Chisel}/Scala voodoo.}
+      
+  \item junctions/ {\footnotesize \color{red} Git submodule of the \Chisel\ source code for the uncore and off-chip network.}
   \item uncore/ {\footnotesize \color{red} Git submodule of the \Chisel\ source code for the uncore components (including LLC).}
+        \end{itemize}
+      \item sbt/ {\footnotesize \color{red} {\tt Chisel}/Scala voodoo.}
     \item vsim/ {\footnotesize \color{red} The ASIC Verilog simulation and build directories. }
-    \item zscale/ {\footnotesize \color{red} Git submodule of the \Chisel\ source code for the zscale micro-controller core. }
    
 \end{itemize}
 \end{itemize}
@@ -219,7 +215,7 @@ To manage the wide array of actively developed projects that encompass Rocket-ch
 
 Rocket is a 5-stage in-order core that implements the RV64G ISA and page-based virtual memory.  The original design purpose of the Rocket core was to enable architectural research into vector co-processors by serving as the scalar {\em Control Processor}.  Some of that work can be found at (\url{http://hwacha.org}).\cite{hwacha} 
 
-Rocket has been taped out at least ten times in two different commercial processes, and has been successfully demonstrated to reach over 1.65 GHz in IBM 45 nm SOI.\cite{riscv_nature} As its namesake suggests, Rocket is the baseline core for the Rocket-chip SoC generator. As discussed earlier, BOOM is instantiated by replacing a Rocket tile with a BOOM tile. 
+Rocket has been taped out at least thirteen times in three different commercial processes, and has been successfully demonstrated to reach over 1.65 GHz in IBM 45 nm SOI.\cite{riscv_nature} As its namesake suggests, Rocket is the baseline core for the Rocket-chip SoC generator. As discussed earlier, BOOM is instantiated by replacing a Rocket tile with a BOOM tile. 
 
 However, from BOOM's point of view, Rocket can also be thought of as a ``Library of Processor Components."  There are a number of modules created for Rocket that are also used by BOOM - the functional units, the caches, the translation look-aside buffers, the page table walker, and more.  Thus, throughout this document you will find references to these Rocket components and descriptions on how they fit into BOOM.
 
