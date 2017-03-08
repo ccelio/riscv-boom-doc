@@ -264,7 +264,7 @@ Each table has a different (and geometrically increasing) amount of history asso
 
 On a misprediction, TAGE attempts to allocate a new entry. It will only overwrite an entry that is ``not useful'' ($ubits == 0$). 
 
-\subsubsection{TAGE Global History and the Circular Shift Registers (CSRs)\footnote{No relation to the Control/Status Registers.}}
+\subsubsection{TAGE Global History and the Circular Shift Registers (CSRs)\protect\footnote{No relation to the Control/Status Registers.}}
 
 Each TAGE table has associated with it its own global history (and each table has geometrically more history than the last table). As the histories become incredibly long (and thus too expensive to snapshot directly), TAGE uses the Very Long Global History Register (VLHR) as described in Section \ref{sec:vlhr}.  The histories contain many more bits of history that can be used to index a TAGE table; therefore, the history must be ``folded'' to fit. A table with 1024 entries uses 10 bits to index the table. Therefore, if the table uses 20 bits of global history, the top 10 bits of history are XOR'ed against the bottom 10 bits of history. 
 
